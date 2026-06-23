@@ -14,6 +14,7 @@ import (
 	"github.com/894/node-cleanup-webhook/pkg/plugins"
 	"github.com/894/node-cleanup-webhook/pkg/watcher"
 	"github.com/894/node-cleanup-webhook/pkg/webhook"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -59,10 +60,18 @@ func main() {
 	cfg.Print()
 	klog.Info("===========================================")
 
-	// Create Kubernetes client
-	client, err := createK8sClient(cfg.Kubeconfig, cfg.InsecureSkipTLSVerify)
+	// Create Kubernetes clients
+	restConfig, err := buildRestConfig(cfg.Kubeconfig, cfg.InsecureSkipTLSVerify)
+	if err != nil {
+		klog.Fatalf("Failed to build REST config: %v", err)
+	}
+	client, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		klog.Fatalf("Failed to create Kubernetes client: %v", err)
+	}
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		klog.Fatalf("Failed to create dynamic client: %v", err)
 	}
 
 	// Initialize plugin registry
@@ -72,6 +81,13 @@ func main() {
 	klog.Info("Registering cleanup plugins...")
 	pluginRegistry.Register(plugins.NewLoggerPlugin(client))
 	pluginRegistry.Register(plugins.NewPortworxPlugin(client, cfg.GetPluginOption("portworx", "labelSelector", constants.DefaultPortworxLabelSelector)))
+	pluginRegistry.Register(plugins.NewLVMOPlugin(
+		client,
+		dynamicClient,
+		cfg.GetPluginOption("lvmo", "namespace", constants.LVMODefaultNamespace),
+		cfg.GetPluginOption("lvmo", "cleanupImage", constants.LVMODefaultCleanupImage),
+		cfg.GetPluginOptionDuration("lvmo", "cleanupTimeout", constants.LVMODefaultCleanupTimeout),
+	))
 
 	// Enable configured plugins
 	klog.Info("Enabling plugins based on configuration...")
@@ -134,7 +150,7 @@ func main() {
 	klog.Info("✅ Shutdown complete")
 }
 
-func createK8sClient(kubeconfig string, insecureSkipTLSVerify bool) (kubernetes.Interface, error) {
+func buildRestConfig(kubeconfig string, insecureSkipTLSVerify bool) (*rest.Config, error) {
 	var restConfig *rest.Config
 	var err error
 
@@ -147,7 +163,6 @@ func createK8sClient(kubeconfig string, insecureSkipTLSVerify bool) (kubernetes.
 		return nil, fmt.Errorf("failed to create config: %w", err)
 	}
 
-	// Configure TLS verification
 	if insecureSkipTLSVerify {
 		klog.Warning("⚠️  TLS verification disabled for kube-apiserver - NOT RECOMMENDED for production!")
 		restConfig.TLSClientConfig.Insecure = true
@@ -155,7 +170,7 @@ func createK8sClient(kubeconfig string, insecureSkipTLSVerify bool) (kubernetes.
 		restConfig.TLSClientConfig.CAFile = ""
 	}
 
-	return kubernetes.NewForConfig(restConfig)
+	return restConfig, nil
 }
 
 func handleHealthz(w http.ResponseWriter, r *http.Request) {
