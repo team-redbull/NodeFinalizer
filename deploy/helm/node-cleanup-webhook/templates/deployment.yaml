@@ -41,6 +41,24 @@ spec:
           env:
             - name: INSECURE_SKIP_TLS_VERIFY
               value: "{{ .Values.kubeClient.insecureSkipTLSVerify }}"
+            - name: ENABLED_PLUGINS
+              value: "{{ join "," .Values.plugins.enabled }}"
+            {{- if has "lvmo" .Values.plugins.enabled }}
+            - name: LVMO_NAMESPACE
+              value: "{{ .Values.plugins.lvmo.namespace }}"
+            - name: LVMO_CLEANUP_IMAGE
+              value: "{{ .Values.plugins.lvmo.cleanupImage }}"
+            - name: LVMO_CLEANUP_TIMEOUT
+              value: "{{ .Values.plugins.lvmo.cleanupTimeout }}"
+            {{- end }}
+            {{- if has "portworx" .Values.plugins.enabled }}
+            - name: PORTWORX_LABEL_SELECTOR
+              value: "{{ .Values.plugins.portworx.labelSelector }}"
+            - name: PORTWORX_API_ENDPOINT
+              value: "{{ .Values.plugins.portworx.apiEndpoint }}"
+            - name: PORTWORX_TIMEOUT
+              value: "{{ .Values.plugins.portworx.timeout }}"
+            {{- end }}
           ports:
             - name: https
               containerPort: {{ .Values.webhook.port }}

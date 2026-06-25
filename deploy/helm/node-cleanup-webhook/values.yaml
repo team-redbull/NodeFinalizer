@@ -86,13 +86,25 @@ podDisruptionBudget:
 finalizer:
   name: "infra.894.io/node-cleanup"
 
+# Plugin configuration
+plugins:
+  # Order matters — plugins run in the exact order listed here
+  # To enable LVMO cleanup: add "lvmo" to this list
+  enabled:
+    - logger
+
+  lvmo:
+    namespace: openshift-storage
+    cleanupImage: registry.redhat.io/ubi9/ubi-minimal:latest
+    cleanupTimeout: 300s
+
+  portworx:
+    labelSelector: "px/enabled=true"
+    apiEndpoint: "http://portworx-api:9001"
+    timeout: 300s
+
 # Cleanup configuration
 cleanup:
-  # Enable Portworx cleanup
-  portworx:
-    enabled: false
-    labelSelector: "px/enabled=true"
-
   # Timeout for cleanup operations
   timeout: 300s
 
@@ -121,6 +133,18 @@ rbac:
     - apiGroups: [""]
       resources: ["events"]
       verbs: ["create", "patch"]
+    # Required for LVMO plugin: delete topolvm PVs and strip their finalizers
+    - apiGroups: [""]
+      resources: ["persistentvolumes"]
+      verbs: ["get", "list", "patch", "delete"]
+    # Required for LVMO plugin: create and monitor the force-cleanup Job on the node
+    - apiGroups: ["batch"]
+      resources: ["jobs"]
+      verbs: ["get", "list", "watch", "create", "delete"]
+    # Required for LVMO plugin: strip finalizers and delete LVMVolumeGroupNodeStatus
+    - apiGroups: ["lvm.topolvm.io"]
+      resources: ["lvmvolumegroupnodestatuses"]
+      verbs: ["get", "list", "update", "delete"]
     # Optional: For Portworx StorageNode CRD
     - apiGroups: ["core.libopenstorage.org"]
       resources: ["storagenodes"]
