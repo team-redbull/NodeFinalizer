@@ -1,0 +1,29 @@
+{{- if has "lvmo" .Values.plugins.enabled }}
+# ServiceAccount used by the LVMO force-cleanup Job pods.
+# Lives in the LVMO namespace (openshift-storage by default), not the webhook namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lvmo-cleanup-job
+  namespace: {{ .Values.plugins.lvmo.namespace }}
+  labels:
+    {{- include "node-cleanup-webhook.labels" . | nindent 4 }}
+---
+# Grant the cleanup Job SA the OpenShift privileged SCC.
+# Required because the Job pod needs hostPID, privileged container, and hostPath volume
+# to run nsenter into the host namespaces and wipe LVM state.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "node-cleanup-webhook.fullname" . }}-lvmo-privileged-scc
+  labels:
+    {{- include "node-cleanup-webhook.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: lvmo-cleanup-job
+    namespace: {{ .Values.plugins.lvmo.namespace }}
+{{- end }}

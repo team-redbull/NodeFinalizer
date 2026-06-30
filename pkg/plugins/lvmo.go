@@ -209,6 +209,8 @@ func (p *LVMOPlugin) runForceCleanupJob(ctx context.Context, nodeName string) er
 			BackoffLimit:            &backoffLimit,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
+					// ServiceAccount must have the privileged SCC in OpenShift
+					ServiceAccountName: constants.LVMOCleanupJobSA,
 					// Pin the Job to exactly the node being cleaned up
 					NodeSelector: map[string]string{
 						"kubernetes.io/hostname": nodeName,

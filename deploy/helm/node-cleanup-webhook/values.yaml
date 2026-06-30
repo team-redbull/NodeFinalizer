@@ -95,7 +95,7 @@ plugins:
 
   lvmo:
     namespace: openshift-storage
-    cleanupImage: registry.redhat.io/ubi9/ubi-minimal:latest
+    cleanupImage: registry.redhat.io/ubi9/ubi:latest
     cleanupTimeout: 300s
 
   portworx:

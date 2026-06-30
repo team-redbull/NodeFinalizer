@@ -50,8 +50,9 @@ const (
 const (
 	LVMOPluginName            = "lvmo"
 	LVMODefaultNamespace      = "openshift-storage"
-	LVMODefaultCleanupImage   = "registry.redhat.io/ubi9/ubi-minimal:latest"
+	LVMODefaultCleanupImage   = "registry.redhat.io/ubi9/ubi:latest"
 	LVMODefaultCleanupTimeout = 5 * time.Minute
+	LVMOCleanupJobSA          = "lvmo-cleanup-job"
 	TopolvmCSIDriver          = "topolvm.io"
 )
 
