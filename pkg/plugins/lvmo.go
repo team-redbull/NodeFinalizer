@@ -78,6 +78,17 @@ func (p *LVMOPlugin) ShouldRun(node *corev1.Node) bool {
 			return true
 		}
 	}
+
+	// Retry scenario: CRD and PVs were already cleaned up in a previous attempt
+	// but the force-cleanup job failed. If a job for this node still exists, re-run.
+	jobName := "lvmo-cleanup-" + sanitizeName(node.Name)
+	if _, err := p.client.BatchV1().Jobs(p.namespace).Get(
+		context.Background(), jobName, metav1.GetOptions{},
+	); err == nil {
+		klog.InfoS("Existing cleanup job found - LVMO cleanup incomplete, retrying", "node", node.Name, "job", jobName)
+		return true
+	}
+
 	return false
 }
 
@@ -85,13 +96,14 @@ func (p *LVMOPlugin) ShouldRun(node *corev1.Node) bool {
 func (p *LVMOPlugin) Cleanup(ctx context.Context, node *corev1.Node) error {
 	klog.InfoS("Starting LVMO cleanup", "node", node.Name, "namespace", p.namespace)
 
-	// Step 1: delete topolvm PVs so PVCs are unblocked
+	// Step 1: delete topolvm PVs so PVCs are unblocked (idempotent, non-fatal)
 	if err := p.deleteNodePVs(ctx, node.Name); err != nil {
 		// non-fatal: log and continue — the force job will wipe storage anyway
 		klog.ErrorS(err, "Failed to delete topolvm PVs (continuing)", "node", node.Name)
 	}
 
 	// Step 2: remove LVMVolumeGroupNodeStatus so the operator stops reconciling the node
+	// before we wipe the underlying LVM data in step 3.
 	if err := p.deleteLVMVGNodeStatus(ctx, node.Name); err != nil {
 		klog.ErrorS(err, "Failed to delete LVMVolumeGroupNodeStatus (continuing)", "node", node.Name)
 	}
