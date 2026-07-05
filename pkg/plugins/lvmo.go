@@ -192,8 +192,8 @@ func (p *LVMOPlugin) runForceCleanupJob(ctx context.Context, nodeName string) er
 	klog.InfoS("Creating LVM force-cleanup Job", "job", jobName, "node", nodeName, "image", p.cleanupImage)
 
 	privileged := true
-	ttl := int32(300)
-	backoffLimit := int32(0)
+	ttl := int32(600)
+	backoffLimit := int32(2)
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
