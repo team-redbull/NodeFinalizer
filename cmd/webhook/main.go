@@ -85,8 +85,6 @@ func main() {
 		client,
 		dynamicClient,
 		cfg.GetPluginOption("lvmo", "namespace", constants.LVMODefaultNamespace),
-		cfg.GetPluginOption("lvmo", "cleanupImage", constants.LVMODefaultCleanupImage),
-		cfg.GetPluginOptionDuration("lvmo", "cleanupTimeout", constants.LVMODefaultCleanupTimeout),
 	))
 
 	// Enable configured plugins

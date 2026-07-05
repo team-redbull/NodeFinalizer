@@ -95,8 +95,6 @@ plugins:
 
   lvmo:
     namespace: openshift-storage
-    cleanupImage: registry.redhat.io/ubi9/ubi:latest
-    cleanupTimeout: 300s
 
   portworx:
     labelSelector: "px/enabled=true"
@@ -137,10 +135,6 @@ rbac:
     - apiGroups: [""]
       resources: ["persistentvolumes"]
       verbs: ["get", "list", "patch", "delete"]
-    # Required for LVMO plugin: create and monitor the force-cleanup Job on the node
-    - apiGroups: ["batch"]
-      resources: ["jobs"]
-      verbs: ["get", "list", "watch", "create", "delete"]
     # Required for LVMO plugin: strip finalizers and delete LVMVolumeGroupNodeStatus
     - apiGroups: ["lvm.topolvm.io"]
       resources: ["lvmvolumegroupnodestatuses"]

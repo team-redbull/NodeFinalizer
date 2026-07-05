@@ -48,27 +48,8 @@ const (
 
 // LVMO plugin
 const (
-	LVMOPluginName            = "lvmo"
-	LVMODefaultNamespace      = "openshift-storage"
-	LVMODefaultCleanupImage   = "registry.redhat.io/ubi9/ubi:latest"
-	LVMODefaultCleanupTimeout = 5 * time.Minute
-	LVMOCleanupJobSA          = "lvmo-cleanup-job"
-	TopolvmCSIDriver          = "topolvm.io"
+	LVMOPluginName       = "lvmo"
+	LVMODefaultNamespace = "openshift-storage"
+	TopolvmCSIDriver     = "topolvm.io"
 )
 
-// LVMOForceCleanupScript runs inside the host namespaces (via nsenter) to wipe all LVM state
-const LVMOForceCleanupScript = `set -e
-echo "=== Starting LVM force cleanup ==="
-for vg in $(vgs --noheadings -o vg_name 2>/dev/null | tr -d ' '); do
-  echo "Removing LVs in VG: $vg"
-  lvremove -f "$vg" 2>/dev/null || true
-  echo "Removing VG: $vg"
-  vgremove -f "$vg" 2>/dev/null || true
-done
-for pv in $(pvs --noheadings -o pv_name 2>/dev/null | tr -d ' '); do
-  echo "Removing PV: $pv"
-  pvremove -f "$pv" 2>/dev/null || true
-  echo "Wiping signatures on: $pv"
-  wipefs -a "$pv" 2>/dev/null || true
-done
-echo "=== LVM force cleanup completed ==="`

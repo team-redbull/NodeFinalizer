@@ -83,9 +83,7 @@ func (c *Config) loadPluginConfigs() {
 	c.PluginConfigs["lvmo"] = PluginConfig{
 		Enabled: c.isPluginEnabled("lvmo"),
 		Options: map[string]string{
-			"namespace":      getEnv("LVMO_NAMESPACE", "openshift-storage"),
-			"cleanupImage":   getEnv("LVMO_CLEANUP_IMAGE", "registry.redhat.io/ubi9/ubi-minimal:latest"),
-			"cleanupTimeout": getEnv("LVMO_CLEANUP_TIMEOUT", "300s"),
+			"namespace": getEnv("LVMO_NAMESPACE", "openshift-storage"),
 		},
 	}
 }

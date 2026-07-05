@@ -46,10 +46,6 @@ spec:
             {{- if has "lvmo" .Values.plugins.enabled }}
             - name: LVMO_NAMESPACE
               value: "{{ .Values.plugins.lvmo.namespace }}"
-            - name: LVMO_CLEANUP_IMAGE
-              value: "{{ .Values.plugins.lvmo.cleanupImage }}"
-            - name: LVMO_CLEANUP_TIMEOUT
-              value: "{{ .Values.plugins.lvmo.cleanupTimeout }}"
             {{- end }}
             {{- if has "portworx" .Values.plugins.enabled }}
             - name: PORTWORX_LABEL_SELECTOR
