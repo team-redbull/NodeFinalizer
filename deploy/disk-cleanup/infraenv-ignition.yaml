@@ -1,0 +1,50 @@
+# InfraEnv with a generic disk-wipe that runs on every host booting the discovery ISO.
+#
+# The systemd unit runs BEFORE agent.service, so disks are cleared before the host
+# registers as available in the Assisted Installer inventory. Because the discovery
+# OS lives in RAM, no disk is mounted and every block device is wiped regardless of
+# what the host previously ran (LVMO/topolvm, Portworx, Ceph, software RAID, etc).
+#
+# The base64 in storage.files[0].contents.source is deploy/disk-cleanup/wipe-disks.sh.
+# To regenerate after editing the script:
+#   base64 -w0 deploy/disk-cleanup/wipe-disks.sh
+# then replace the string after "base64," below.
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: disk-cleanup-infraenv
+  namespace: your-namespace
+spec:
+  # ---- set these for your environment ----
+  clusterRef:
+    name: your-cluster
+    namespace: your-namespace
+  pullSecretRef:
+    name: pull-secret
+  sshAuthorizedKey: "ssh-rsa AAAA... your-key"
+  # ----------------------------------------
+  ignitionConfigOverride: |
+    {
+      "ignition": { "version": "3.1.0" },
+      "storage": {
+        "files": [
+          {
+            "path": "/usr/local/bin/wipe-disks.sh",
+            "mode": 493,
+            "overwrite": true,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,IyEvYmluL2Jhc2gKIwojIEdlbmVyaWMgZGlzayBjbGVhbnVwIGZvciBob3N0cyByZXR1cm5pbmcgdG8gdGhlIEFzc2lzdGVkIEluc3RhbGxlciBpbnZlbnRvcnkuCiMKIyBSdW5zIGZyb20gdGhlIGRpc2NvdmVyeSBJU08gd2hlcmUgdGhlIE9TIGxpdmVzIGVudGlyZWx5IGluIFJBTSwgc28gTk8gZGlzayBpcwojIG1vdW50ZWQgYW5kIGV2ZXJ5IGJsb2NrIGRldmljZSBjYW4gYmUgc2FmZWx5IHdpcGVkLiBUaGlzIG1ha2VzIHRoZSBzY3JpcHQKIyBzdG9yYWdlLWFnbm9zdGljOiBpdCBjbGVhcnMgTFZNIChMVk1PL3RvcG9sdm0pLCBzb2Z0d2FyZSBSQUlELCBQb3J0d29yeCwgQ2VwaCwKIyBhbmQgYW55IGZpbGVzeXN0ZW0gc2lnbmF0dXJlcyByZWdhcmRsZXNzIG9mIHdoaWNoIGNsdXN0ZXIgdGhlIGhvc3QgY2FtZSBmcm9tLgojCiMgT3JkZXIgbWF0dGVyczogdGVhciBkb3duIGxvZ2ljYWwgbGF5ZXJzIChMVk0sIFJBSUQpIGJlZm9yZSB3aXBpbmcgdGhlIHJhdyBkaXNrcwojIHNvIG5vdGhpbmcgaG9sZHMgdGhlIGRldmljZXMgb3Blbi4KCnNldCArbyBlcnJleGl0ICAgIyBiZXN0LWVmZm9ydDogbmV2ZXIgYWJvcnQgdGhlIGJvb3QgYmVjYXVzZSBvbmUgY29tbWFuZCBmYWlsZWQKc2V0ICtvIHBpcGVmYWlsCgpsb2coKSB7IGVjaG8gIlt3aXBlLWRpc2tzXSAkKiI7IH0KCmxvZyAiPT09IFN0YXJ0aW5nIGdlbmVyaWMgZGlzayBjbGVhbnVwID09PSIKbG9nICJCbG9jayBkZXZpY2VzIGJlZm9yZSBjbGVhbnVwOiIKbHNibGsgLW8gTkFNRSxTSVpFLFRZUEUsRlNUWVBFLE1PVU5UUE9JTlQgMj4vZGV2L251bGwgfHwgdHJ1ZQoKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwojIDEuIFRlYXIgZG93biBMVk0gKExWcyAtPiBWR3MgLT4gUFZzKQojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCmlmIGNvbW1hbmQgLXYgdmdjaGFuZ2UgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgbG9nICJEZWFjdGl2YXRpbmcgYWxsIHZvbHVtZSBncm91cHMiCiAgdmdjaGFuZ2UgLWFuIDI+L2Rldi9udWxsCgogIGZvciBsdiBpbiAkKGx2cyAtLW5vaGVhZGluZ3MgLW8gbHZfcGF0aCAyPi9kZXYvbnVsbCB8IHRyIC1kICcgJyk7IGRvCiAgICBsb2cgIlJlbW92aW5nIExWOiAkbHYiCiAgICBsdnJlbW92ZSAtZiAiJGx2IiAyPi9kZXYvbnVsbAogIGRvbmUKCiAgZm9yIHZnIGluICQodmdzIC0tbm9oZWFkaW5ncyAtbyB2Z19uYW1lIDI+L2Rldi9udWxsIHwgdHIgLWQgJyAnKTsgZG8KICAgIGxvZyAiUmVtb3ZpbmcgVkc6ICR2ZyIKICAgIHZncmVtb3ZlIC1mICIkdmciIDI+L2Rldi9udWxsCiAgZG9uZQoKICBmb3IgcHYgaW4gJChwdnMgLS1ub2hlYWRpbmdzIC1vIHB2X25hbWUgMj4vZGV2L251bGwgfCB0ciAtZCAnICcpOyBkbwogICAgbG9nICJSZW1vdmluZyBQVjogJHB2IgogICAgcHZyZW1vdmUgLWZmIC15ICIkcHYiIDI+L2Rldi9udWxsCiAgZG9uZQplbHNlCiAgbG9nICJMVk0gdG9vbHMgbm90IHByZXNlbnQsIHNraXBwaW5nIExWTSB0ZWFyZG93biIKZmkKCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMKIyAyLiBTdG9wIHNvZnR3YXJlIFJBSUQgYW5kIHplcm8gc3VwZXJibG9ja3MKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwppZiBjb21tYW5kIC12IG1kYWRtID4vZGV2L251bGwgMj4mMTsgdGhlbgogIGxvZyAiU3RvcHBpbmcgYWxsIFJBSUQgYXJyYXlzIgogICMgU3RvcCBhY3RpdmUgYXJyYXlzCiAgZm9yIG1kIGluICQobHMgL2Rldi9tZCogMj4vZGV2L251bGwpOyBkbwogICAgbG9nICJTdG9wcGluZyBSQUlEIGFycmF5OiAkbWQiCiAgICBtZGFkbSAtLXN0b3AgIiRtZCIgMj4vZGV2L251bGwKICBkb25lCiAgbWRhZG0gLS1zdG9wIC0tc2NhbiAyPi9kZXYvbnVsbAoKICAjIFplcm8gc3VwZXJibG9ja3Mgb24gZXZlcnkgcGFydGl0aW9uIGFuZCBkaXNrIHRoYXQgaGFzIG9uZQogIGZvciBkZXYgaW4gJChsc2JsayAtcG5sbyBOQU1FIDI+L2Rldi9udWxsKTsgZG8KICAgIGlmIG1kYWRtIC0tZXhhbWluZSAiJGRldiIgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgICAgIGxvZyAiWmVyb2luZyBSQUlEIHN1cGVyYmxvY2sgb246ICRkZXYiCiAgICAgIG1kYWRtIC0temVyby1zdXBlcmJsb2NrIC0tZm9yY2UgIiRkZXYiIDI+L2Rldi9udWxsCiAgICBmaQogIGRvbmUKZWxzZQogIGxvZyAibWRhZG0gbm90IHByZXNlbnQsIHNraXBwaW5nIFJBSUQgdGVhcmRvd24iCmZpCgojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCiMgMy4gRmx1c2ggZGV2aWNlLW1hcHBlciAvIG11bHRpcGF0aCBsZWZ0b3ZlcnMKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwppZiBjb21tYW5kIC12IGRtc2V0dXAgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgbG9nICJSZW1vdmluZyBhbGwgZGV2aWNlLW1hcHBlciBtYXBwaW5ncyIKICBkbXNldHVwIHJlbW92ZV9hbGwgMj4vZGV2L251bGwKZmkKaWYgY29tbWFuZCAtdiBtdWx0aXBhdGggPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgbG9nICJGbHVzaGluZyBtdWx0aXBhdGggbWFwcyIKICBtdWx0aXBhdGggLUYgMj4vZGV2L251bGwKZmkKCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMKIyA0LiBXaXBlIGV2ZXJ5IHBoeXNpY2FsIGRpc2sKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwojIE9ubHkgd2hvbGUgZGlza3Mgb2YgdHlwZSAiZGlzayIgLS0gc2tpcCBsb29wLCByb20sIGFuZCByZW1vdmFibGUgVVNCIGlmIGRlc2lyZWQuCmZvciBkZXYgaW4gJChsc2JsayAtZHBubG8gTkFNRSxUWVBFIDI+L2Rldi9udWxsIHwgYXdrICckMj09ImRpc2sie3ByaW50ICQxfScpOyBkbwogIGxvZyAiV2lwaW5nIHNpZ25hdHVyZXMgb246ICRkZXYiCiAgd2lwZWZzIC0tYWxsIC0tZm9yY2UgIiRkZXYiIDI+L2Rldi9udWxsCgogICMgRGV0ZXJtaW5lIGRldmljZSBzaXplIGluIGJ5dGVzIHRvIGxvY2F0ZSB0aGUgdGFpbAogIHNpemVfYnl0ZXM9JChibG9ja2RldiAtLWdldHNpemU2NCAiJGRldiIgMj4vZGV2L251bGwpCgogIGxvZyAiWmVyb2luZyBmaXJzdCAxMDBNQiBvZjogJGRldiIKICBkZCBpZj0vZGV2L3plcm8gb2Y9IiRkZXYiIGJzPTFNIGNvdW50PTEwMCBjb252PWZzeW5jIDI+L2Rldi9udWxsCgogICMgWmVybyB0aGUgbGFzdCAxMDBNQiB0b28gLS0gbWRhZG0gMC45MC8xLjAgc3VwZXJibG9ja3MgYW5kIHNvbWUgc3RvcmFnZQogICMgYmFja2VuZHMgKFBvcnR3b3J4LCBDZXBoKSBrZWVwIG1ldGFkYXRhIGF0IHRoZSB0YWlsIG9mIHRoZSBkZXZpY2UuCiAgaWYgWyAtbiAiJHNpemVfYnl0ZXMiIF0gJiYgWyAiJHNpemVfYnl0ZXMiIC1ndCAyMDk3MTUyMDAgXTsgdGhlbgogICAgc2Vla19tYj0kKCggc2l6ZV9ieXRlcyAvIDEwNDg1NzYgLSAxMDAgKSkKICAgIGxvZyAiWmVyb2luZyBsYXN0IDEwME1CIG9mOiAkZGV2IChzZWVrPSR7c2Vla19tYn1NQikiCiAgICBkZCBpZj0vZGV2L3plcm8gb2Y9IiRkZXYiIGJzPTFNIGNvdW50PTEwMCBzZWVrPSIkc2Vla19tYiIgY29udj1mc3luYyAyPi9kZXYvbnVsbAogIGZpCgogICMgRGlzY2FyZCBibG9ja3Mgb24gU1NEcy9OVk1lIHdoZXJlIHN1cHBvcnRlZCAoZmFzdCwgZnJlZXMgZmxhc2gpCiAgYmxrZGlzY2FyZCAiJGRldiIgMj4vZGV2L251bGwgJiYgbG9nICJibGtkaXNjYXJkIHN1Y2NlZWRlZCBvbjogJGRldiIKZG9uZQoKIyBSZS1yZWFkIHBhcnRpdGlvbiB0YWJsZXMgc28gdGhlIGtlcm5lbCBzZWVzIHRoZSB3aXBlZCBzdGF0ZQpwYXJ0cHJvYmUgMj4vZGV2L251bGwKCmxvZyAiQmxvY2sgZGV2aWNlcyBhZnRlciBjbGVhbnVwOiIKbHNibGsgLW8gTkFNRSxTSVpFLFRZUEUsRlNUWVBFLE1PVU5UUE9JTlQgMj4vZGV2L251bGwgfHwgdHJ1ZQpsb2cgIj09PSBEaXNrIGNsZWFudXAgY29tcGxldGVkID09PSIKZXhpdCAwCg=="
+            }
+          }
+        ]
+      },
+      "systemd": {
+        "units": [
+          {
+            "name": "wipe-disks.service",
+            "enabled": true,
+            "contents": "[Unit]\nDescription=Wipe all storage metadata before the agent registers\n# Wait until udev has enumerated all block devices so no disk is missed,\n# but run before the assisted agent registers this host to inventory.\nAfter=systemd-udev-settle.service\nWants=systemd-udev-settle.service\nBefore=agent.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/local/bin/wipe-disks.sh\nStandardOutput=journal+console\n\n[Install]\nWantedBy=multi-user.target"
+          }
+        ]
+      }
+    }
